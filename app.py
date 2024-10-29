@@ -8,7 +8,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 import tempfile  # Import tempfile for temporary directories
-
+api_key=st.secrets["OPENAI_API_KEY"]
 # Initialize OpenAI client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
