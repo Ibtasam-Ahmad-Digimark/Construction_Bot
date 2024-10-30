@@ -168,7 +168,7 @@ uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
 if uploaded_file:
     first_response = client.chat.completions.create(
         model="gpt-4o",  # or the model you're using
-        messages=[{"role": "user", "content": f"take this as instruction and say 'i am ready! how can i help you.' if you are ready.{first_query}"}]
+        messages=[{"role": "user", "content": f"take this as instruction and say 'i am ready! how can i help you. it might take some time to analyze the pdf.' if you are ready.{first_query}"}]
     )
     if first_response.choices and len(first_response.choices) > 0:
         first_generated_response = first_response.choices[0].message.content
@@ -188,42 +188,41 @@ if 'current_query' not in st.session_state:
 
 # Chat interaction
 if uploaded_file and api_key:
-    # Create a temporary directory for image storage
-    with tempfile.TemporaryDirectory() as temp_dir:
-        RESULTS_PATH = temp_dir
-        
-        # Convert uploaded PDF to images
-        pdf_to_images(uploaded_file, RESULTS_PATH)
+    # Only process the PDF if it hasn't been processed yet
+    if not st.session_state.encoded_images:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            RESULTS_PATH = temp_dir
+            
+            # Convert uploaded PDF to images and encode only once
+            pdf_to_images(uploaded_file, RESULTS_PATH)
+            st.session_state.encoded_images = encode_images(RESULTS_PATH)
+            
+            # Optional: Save to JSON, if needed
+            json_file_path = 'encoded_images.json'
+            save_to_json(st.session_state.encoded_images, json_file_path)
 
-        # Encode images to Base64
-        st.session_state.encoded_images = encode_images(RESULTS_PATH)
-        
-        # Save to JSON (optional, depending on your use case)
-        json_file_path = 'encoded_images.json'
-        save_to_json(st.session_state.encoded_images, json_file_path)
+    for message in st.session_state.responses:
+        with st.chat_message(message['role']):
+            st.markdown(message['content'])
 
-        for message in st.session_state.responses:
-            with st.chat_message(message['role']):
-                st.markdown(message['content'])
+    # User input for the query
+    if st.session_state.current_query == "":
+        if user_query := st.chat_input("Enter your query:"):
+            if user_query:  # Check if the user has entered a query
+                st.session_state.current_query = user_query  # Store current query
+                st.session_state.responses.append({"role":"user","content": user_query})  # Store user query
+                with st.spinner("Analyzing data..."):
+                    # Get the combined streamed response
+                    response = chunk_api_requests(st.session_state.encoded_images, user_query, api_key)
 
-        # User input for the query
-        if st.session_state.current_query == "":
-            if user_query := st.chat_input("Enter your query:"):
-                if user_query:  # Check if the user has entered a query
-                    st.session_state.current_query = user_query  # Store current query
-                    st.session_state.responses.append({"role":"user","content": user_query})  # Store user query
-                    with st.spinner("Analyzing data..."):
-                        # Get the combined streamed response
-                        response = chunk_api_requests(st.session_state.encoded_images, user_query, api_key)
-
-                    with st.chat_message('user'):
-                        st.markdown(user_query)
-                    # Stream the final response
-                    with st.chat_message('assistant'):
-                        st.markdown(response)
-                    st.session_state.responses.append({"role":"assistant","content": response})  # Store bot response
-                    st.session_state.current_query = ""  # Reset current query for next input
-        else:
-            st.warning("Please complete your current query before sending another.")
+                with st.chat_message('user'):
+                    st.markdown(user_query)
+                # Stream the final response
+                with st.chat_message('assistant'):
+                    st.markdown(response)
+                st.session_state.responses.append({"role":"assistant","content": response})  # Store bot response
+                st.session_state.current_query = ""  # Reset current query for next input
+    else:
+        st.warning("Please complete your current query before sending another.")
 else:
     st.warning("Please upload a PDF.")
