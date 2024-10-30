@@ -14,13 +14,13 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 first_query = """
-Please analyze the provided construction plan document and compile a comprehensive report detailing the square footage for the following materials and components:
+Please review the provided construction plan document and prepare a comprehensive report that captures the square footage for the following materials and components:
 
 1. Sheetrock
 2. Concrete
 3. Roofing
 
-For roofing, provide a breakdown for each subtype:
+For roofing, kindly break down the details for each subtype:
    - Shingle roofing
    - Modified bitumen
    - TPO (Thermoplastic Polyolefin)
@@ -29,23 +29,23 @@ For roofing, provide a breakdown for each subtype:
 
 4. Structural steel
 
-The construction document may contain multiple sections and phases. Ensure that the square footage calculations are complete, accounting for all relevant parts and subparts of the document. If there are multiple entries for a particular material, sum them to provide a total square footage.
+The construction plan may consist of multiple sections or phases. Please make sure the square footage calculations are thorough and include all relevant areas of the document. If there are multiple entries for any material, please combine them to present a total square footage.
 
-Additionally, include a concise summary of the construction plan, outlining the key details such as:
-   - Materials specified
-   - Construction phases covered
-   - Notable specifications or design considerations
+Along with the square footage, it would be helpful to include a brief, thoughtful summary of the overall construction plan, highlighting key aspects such as:
+   - Materials used
+   - Phases of construction outlined
+   - Any noteworthy specifications or design elements
 
-The final report should follow this structured format:
+The report should be formatted as follows:
 
 {
     "Sheetrock": {
         "total_square_footage": <value>,
-        "details": "<description or any relevant notes>"
+        "details": "<any additional notes or observations>"
     },
     "Concrete": {
         "total_square_footage": <value>,
-        "details": "<description or any relevant notes>"
+        "details": "<any additional notes or observations>"
     },
     "Roofing": {
         "total_square_footage": <value>,
@@ -56,21 +56,21 @@ The final report should follow this structured format:
             "Metal R panel": <value>,
             "Standing seam": <value>
         },
-        "details": "<description or any relevant notes>"
+        "details": "<any additional notes or observations>"
     },
     "Structural steel": {
         "total_square_footage": <value>,
-        "details": "<description or any relevant notes>"
+        "details": "<any additional notes or observations>"
     },
     "Plan Summary": {
-        "Overview": "<brief summary of the overall plan>",
-        "Materials": "<list of key materials>",
-        "Phases": "<list of construction phases covered>",
-        "Specifications": "<important design or construction specifications>"
+        "Overview": "<a thoughtful summary of the overall plan>",
+        "Materials": "<key materials highlighted in the plan>",
+        "Phases": "<construction phases and timelines>",
+        "Specifications": "<any important design considerations>"
     }
 }
 
-Ensure the report is detailed, accurate, and provides a complete overview of the square footage calculations and essential aspects of the construction plan.
+Please approach this task with a focus on clarity and completeness, and feel free to add any helpful insights that may assist in understanding the scope and details of the plan. The goal is to provide a report that not only delivers the numbers but also tells the story of the project in a clear and approachable way.
 """
 
 # Function to convert PDF to images
@@ -164,19 +164,7 @@ def chunk_api_requests(encoded_images, user_query, api_key):
 # Streamlit UI
 st.title("PDF Chatbot")
 
-uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
-if uploaded_file:
-    first_response = client.chat.completions.create(
-        model="gpt-4o",  # or the model you're using
-        messages=[{"role": "user", "content": f"take this as instruction and say 'i am ready! how can i help you. it might take some time to analyze the pdf.' if you are ready.{first_query}"}]
-    )
-    if first_response.choices and len(first_response.choices) > 0:
-        first_generated_response = first_response.choices[0].message.content
-   
-
-    with st.chat_message('assistant'):
-        st.markdown(first_generated_response)
-
+uploaded_file = st.file_uploader("Upload a PDF.", type=["pdf"])
 
 # Initialize session state to manage chat interaction
 if 'responses' not in st.session_state:
@@ -185,6 +173,8 @@ if 'encoded_images' not in st.session_state:
     st.session_state.encoded_images = []
 if 'current_query' not in st.session_state:
     st.session_state.current_query = ""
+if 'is_first_query' not in st.session_state:
+    st.session_state.is_first_query = True  # Track if it's the first query
 
 # Chat interaction
 if uploaded_file and api_key:
@@ -193,36 +183,48 @@ if uploaded_file and api_key:
         with tempfile.TemporaryDirectory() as temp_dir:
             RESULTS_PATH = temp_dir
             
-            # Convert uploaded PDF to images and encode only once
-            pdf_to_images(uploaded_file, RESULTS_PATH)
-            st.session_state.encoded_images = encode_images(RESULTS_PATH)
-            
-            # Optional: Save to JSON, if needed
-            json_file_path = 'encoded_images.json'
-            save_to_json(st.session_state.encoded_images, json_file_path)
+            with st.spinner("Uploading PDF..."):
+                # Convert uploaded PDF to images and encode only once
+                pdf_to_images(uploaded_file, RESULTS_PATH)
+                st.session_state.encoded_images = encode_images(RESULTS_PATH)
+                
+                # Optional: Save to JSON, if needed
+                json_file_path = 'encoded_images.json'
+                save_to_json(st.session_state.encoded_images, json_file_path)
 
     for message in st.session_state.responses:
         with st.chat_message(message['role']):
             st.markdown(message['content'])
 
-    # User input for the query
-    if st.session_state.current_query == "":
-        if user_query := st.chat_input("Enter your query:"):
-            if user_query:  # Check if the user has entered a query
-                st.session_state.current_query = user_query  # Store current query
-                st.session_state.responses.append({"role":"user","content": user_query})  # Store user query
-                with st.spinner("Analyzing data..."):
-                    # Get the combined streamed response
-                    response = chunk_api_requests(st.session_state.encoded_images, user_query, api_key)
+    # First predefined query logic
+    if st.session_state.is_first_query:
+        user_query = first_query
+        st.session_state.current_query = user_query
 
-                with st.chat_message('user'):
-                    st.markdown(user_query)
-                # Stream the final response
-                with st.chat_message('assistant'):
-                    st.markdown(response)
-                st.session_state.responses.append({"role":"assistant","content": response})  # Store bot response
-                st.session_state.current_query = ""  # Reset current query for next input
-    else:
-        st.warning("Please complete your current query before sending another.")
+        with st.spinner("Analyzing data..."):
+            # Get the combined streamed response
+            _f_response = chunk_api_requests(st.session_state.encoded_images, user_query, api_key)
+
+        with st.chat_message('assistant'):
+            st.markdown(_f_response)
+        st.session_state.responses.append({"role": "assistant", "content": _f_response})
+
+        st.session_state.is_first_query = False  # After processing the first query
+        st.session_state.current_query = ""  # Clear current query after first completion
+
+    # Display chat_input after first query
+    # user_query = 
+    if user_query:=st.chat_input("Enter your query:"):
+        st.session_state.responses.append({"role": "user", "content": user_query})
+        with st.spinner("Analyzing data..."):
+            # Process user input and provide response
+            response = chunk_api_requests(st.session_state.encoded_images, user_query, api_key)
+
+        with st.chat_message('user'):
+            st.markdown(user_query)
+
+        with st.chat_message('assistant'):
+            st.markdown(response)
+        st.session_state.responses.append({"role": "assistant", "content": response})
 else:
-    st.warning("Please upload a PDF.")
+    st.warning("Please upload a PDF. Uploading PDF might take some time; don't close the application.")
