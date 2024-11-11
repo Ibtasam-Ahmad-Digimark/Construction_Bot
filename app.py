@@ -16,9 +16,9 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 first_query = """
 Please review the provided construction plan document and prepare a comprehensive report that captures the square footage for the following materials and components:
 
-1. Sheetrock
-2. Concrete
-3. Roofing
+1. Sheetrock (Sheet rock : Length x Width)
+2. Concrete (Concrete : Length x Width = A, Depth of Concrete)
+3. Roofing (Roofing : Length x Width = A(Pitch Factor) = B)
 
 For roofing, kindly break down the details for each subtype:
    - Shingle roofing
@@ -27,7 +27,7 @@ For roofing, kindly break down the details for each subtype:
    - Metal R panel
    - Standing seam
 
-4. Structural steel
+4. Structural steel (Structural Steel : Length x Width = C, Average Height)
 
 The construction plan may consist of multiple sections or phases. Please make sure the square footage calculations are thorough and include all relevant areas of the document. If there are multiple entries for any material, please combine them to present a total square footage.
 
@@ -36,42 +36,11 @@ Along with the square footage, it would be helpful to include a brief, thoughtfu
    - Phases of construction outlined
    - Any noteworthy specifications or design elements
 
-The report should be formatted as follows:
 
-{
-    "Sheetrock": {
-        "total_square_footage": <value>,
-        "details": "<any additional notes or observations>"
-    },
-    "Concrete": {
-        "total_square_footage": <value>,
-        "details": "<any additional notes or observations>"
-    },
-    "Roofing": {
-        "total_square_footage": <value>,
-        "subtypes": {
-            "Shingle roofing": <value>,
-            "Modified bitumen": <value>,
-            "TPO": <value>,
-            "Metal R panel": <value>,
-            "Standing seam": <value>
-        },
-        "details": "<any additional notes or observations>"
-    },
-    "Structural steel": {
-        "total_square_footage": <value>,
-        "details": "<any additional notes or observations>"
-    },
-    "Plan Summary": {
-        "Overview": "<a thoughtful summary of the overall plan>",
-        "Materials": "<key materials highlighted in the plan>",
-        "Phases": "<construction phases and timelines>",
-        "Specifications": "<any important design considerations>"
-    }
-}
-
-Please approach this task with a focus on clarity and completeness, and feel free to add any helpful insights that may assist in understanding the scope and details of the plan. The goal is to provide a report that not only delivers the numbers but also tells the story of the project in a clear and approachable way.
+Please approach this task with a focus on clarity and completeness, and feel free to add any helpful insights that may assist in understanding the scope and details of the plan. The goal is to provide a report that not only delivers the numbers but also tells the story of the project in a clear and approachable way. Don't organize the data in a structured format
+Please ensure the report only includes sections that contain relevant data. If no data is available for any category, omit that category entirely.
 """
+
 
 # Function to convert PDF to images
 def pdf_to_images(uploaded_file, output_dir):
