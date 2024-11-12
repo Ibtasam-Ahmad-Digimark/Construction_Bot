@@ -14,20 +14,31 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 first_query = """
-Please review the provided construction plan document and generate a report that includes calculated values and relevant details for each material or section, following these guidelines:
+Please review the provided construction plan document and prepare a comprehensive report that captures the square footage for the following materials and components:
 
-Include Only Sections with Actual Data: Only include materials or sections (such as Sheetrock, Concrete, Roofing, Structural Steel, and Plan Summary) if they contain actual data or calculated values.
+1. Sheetrock (Sheet rock : Length x Width)
+2. Concrete (Concrete : Length x Width = A, Depth of Concrete)
+3. Roofing (Roofing : Length x Width = A(Pitch Factor) = B)
 
-Exclude Empty Structures and Placeholders: Do not include any sections, fields, or placeholders if they lack real data. Any field or section without actual values should be omitted entirely from the output.
+For roofing, kindly break down the details for each subtype:
+   - Shingle roofing
+   - Modified bitumen
+   - TPO (Thermoplastic Polyolefin)
+   - Metal R panel
+   - Standing seam
 
-Report Structure:
+4. Structural steel (Structural Steel : Length x Width = C, Average Height)
 
-For each material (e.g., Sheetrock, Concrete, Roofing, Structural Steel), include calculated values for total square footage and other relevant details only if data is available.
-For Roofing subtypes (e.g., Shingle roofing, Modified bitumen), include only those subtypes with calculated values.
-The Plan Summary should include only the fields with data, such as Overview, Materials, Phases, and Specifications.
-Sample Format: If a section or material does not have data, it should be left out from the final output. The JSON report should contain only sections and fields that have actual values, resulting in a clean and concise structure.
+The construction plan may consist of multiple sections or phases. Please make sure the square footage calculations are thorough and include all relevant areas of the document. If there are multiple entries for any material, please combine them to present a total square footage.
 
-Please focus on clarity, presenting only the data-backed sections to create a report that accurately reflects the content of the construction plan.
+Along with the square footage, it would be helpful to include a brief, thoughtful summary of the overall construction plan, highlighting key aspects such as:
+   - Materials used
+   - Phases of construction outlined
+   - Any noteworthy specifications or design elements
+
+
+Please approach this task with a focus on clarity and completeness, and feel free to add any helpful insights that may assist in understanding the scope and details of the plan. The goal is to provide a report that not only delivers the numbers but also tells the story of the project in a clear and approachable way. Don't organize the data in a structured format
+Please ensure the report only includes sections that contain relevant data. If no data is available for any category, omit that category entirely.
 """
 
 
