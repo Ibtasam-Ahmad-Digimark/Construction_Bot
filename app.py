@@ -8,13 +8,15 @@ import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 import tempfile  # Import tempfile for temporary directories
+
+
 api_key=st.secrets["OPENAI_API_KEY"]
 # Initialize OpenAI client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 first_query = """
-Please review the provided construction plan document and prepare a comprehensive report that captures the square footage for the following materials and components:
+Please review the provided construction plan document and prepare a comprehensive report that captures the square footage for the following materials and components, only give numarical values:
 
 1. Sheetrock (Sheet rock : Length x Width)
 2. Concrete (Concrete : Length x Width = A, Depth of Concrete)
@@ -40,7 +42,6 @@ Along with the square footage, it would be helpful to include a brief, thoughtfu
 Please approach this task with a focus on clarity and completeness, and feel free to add any helpful insights that may assist in understanding the scope and details of the plan. The goal is to provide a report that not only delivers the numbers but also tells the story of the project in a clear and approachable way. Don't organize the data in a structured format
 Please ensure the report only includes sections that contain relevant data. If no data is available for any category, omit that category entirely.
 """
-
 
 # Function to convert PDF to images
 def pdf_to_images(uploaded_file, output_dir):
@@ -79,9 +80,20 @@ def chunk_api_requests(encoded_images, user_query, api_key):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
     }
-    
+
     chunk_size = 17
     all_responses = []
+
+    # Prepare the initial system message to maintain context
+    system_prompt = {
+        "role": "system",
+        "content": "You are an intelligent assistant that analyzes construction plans. Give a numarical answers for the user query, don't give calculations"
+    }
+
+    # Prepare the conversation history
+    messages = [system_prompt]  # Start with the system message
+    messages.extend(st.session_state.responses)  # Add previous chats
+    messages.append({"role": "user", "content": user_query})  # Add current user query
 
     for i in range(0, len(encoded_images), chunk_size):
         time.sleep(1)  # Simulating a delay
@@ -89,19 +101,7 @@ def chunk_api_requests(encoded_images, user_query, api_key):
         
         payload = {
             "model": "gpt-4-turbo",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [user_query] + [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{img}"
-                            }
-                        } for img in chunk
-                    ]
-                }
-            ],
+            "messages": messages,  # Include full conversation history
             "max_tokens": 3000
         }
 
@@ -118,7 +118,7 @@ def chunk_api_requests(encoded_images, user_query, api_key):
 
     # Stream the combined response
     stream = client.chat.completions.create(
-        model="gpt-4-turbo",
+        model="gpt-4o",
         messages=[{"role": "user", "content": f'Combine all the responses and explain it as one response: {combined_responses}'}],
         stream=True,
     )
@@ -182,7 +182,6 @@ if uploaded_file and api_key:
         st.session_state.current_query = ""  # Clear current query after first completion
 
     # Display chat_input after first query
-    # user_query = 
     if user_query:=st.chat_input("Enter your query:"):
         st.session_state.responses.append({"role": "user", "content": user_query})
         with st.spinner("Analyzing data..."):
@@ -197,3 +196,4 @@ if uploaded_file and api_key:
         st.session_state.responses.append({"role": "assistant", "content": response})
 else:
     st.warning("Please upload a PDF. Uploading PDF might take some time; don't close the application.")
+
