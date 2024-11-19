@@ -88,7 +88,7 @@ def chunk_api_requests(encoded_images, user_query, api_key):
         chunk = encoded_images[i:i + chunk_size]
         
         payload = {
-            "model": "gpt-4o",
+            "model": "gpt-4-turbo",
             "messages": [
                 {
                     "role": "user",
