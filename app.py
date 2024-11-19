@@ -16,7 +16,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 first_query = """
-Please review the provided construction plan document and prepare a comprehensive report that captures the square footage for the following materials and components, only give numarical values:
+Please review the provided construction plan document and prepare a comprehensive report that captures the square footage for the following materials and components, only give numarical values. Give the values that accuratly matches the provided context.:
 
 1. Sheetrock (Sheet rock : Length x Width)
 2. Concrete (Concrete : Length x Width = A, Depth of Concrete)
@@ -81,13 +81,13 @@ def chunk_api_requests(encoded_images, user_query, api_key):
         "Authorization": f"Bearer {api_key}"
     }
 
-    chunk_size = 17
+    chunk_size = 13
     all_responses = []
 
     # Prepare the initial system message to maintain context
     system_prompt = {
         "role": "system",
-        "content": "You are an intelligent assistant that analyzes construction plans. Give a numarical answers for the user query, don't give calculations"
+        "content": "You are an intelligent assistant that analyzes construction plans. Give a numarical answers for the user query, don't give calculations, and give the values that accuratly matches the provided context."
     }
 
     # Prepare the conversation history
