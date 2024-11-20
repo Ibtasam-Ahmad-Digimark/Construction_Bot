@@ -39,8 +39,7 @@ Along with the square footage, it would be helpful to include a brief, thoughtfu
    - Any noteworthy specifications or design elements
 
 
-Please approach this task with a focus on clarity and completeness, and feel free to add any helpful insights that may assist in understanding the scope and details of the plan. The goal is to provide a report that not only delivers the numbers but also tells the story of the project in a clear and approachable way. Don't organize the data in a structured format
-Please ensure the report only includes sections that contain relevant data. If no data is available for any category, omit that category entirely.
+Ensure the report is detailed, accurate, and provides a complete overview of the square footage calculations and essential aspects of the construction plan.
 """
 
 # Function to convert PDF to images
