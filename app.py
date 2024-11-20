@@ -80,14 +80,20 @@ def chunk_api_requests(encoded_images, user_query, api_key):
         "Authorization": f"Bearer {api_key}"
     }
 
-    chunk_size = 13
+    chunk_size = 23
     all_responses = []
 
     # Prepare the initial system message to maintain context
     system_prompt = {
         "role": "system",
-        "content": "You are an intelligent assistant that analyzes construction plans. Give a numarical answers for the user query, don't give calculations, and give the values that accuratly matches the provided context."
-    }
+        "content": """
+                You are an intelligent assistant that analyzes construction plans. Give a numarical answers for the user query, do the calculations and give the final resultant value but do not show the calculations you have done to generate the final result.
+                Do not guess or provide irrelevant information. Only include:       
+                - Values with context that match the query (e.g., square footage or dimensions).        
+                - Brief and accurate summaries directly tied to the document's content.         
+                If specific data is not available, state that it is unavailable in the document.
+            """
+        }
 
     # Prepare the conversation history
     messages = [system_prompt]  # Start with the system message
@@ -118,7 +124,7 @@ def chunk_api_requests(encoded_images, user_query, api_key):
     # Stream the combined response
     stream = client.chat.completions.create(
         model="gpt-4o",
-        messages=[{"role": "user", "content": f'Combine all the responses and explain it as one response: {combined_responses}'}],
+        messages=[{"role": "user", "content": f"""Combine all the responses and explain it as one response, and don't give a hint that you have combined multiple responses in one {combined_responses}. If there are calculcations given in the respones make sure to add all of those calculations to give one final results for that."""}],
         stream=True,
     )
 
@@ -195,4 +201,3 @@ if uploaded_file and api_key:
         st.session_state.responses.append({"role": "assistant", "content": response})
 else:
     st.warning("Please upload a PDF. Uploading PDF might take some time; don't close the application.")
-
