@@ -80,19 +80,25 @@ def chunk_api_requests(encoded_images, user_query, api_key):
         "Authorization": f"Bearer {api_key}"
     }
 
-    chunk_size = 23
+    chunk_size = 5
     all_responses = []
 
     # Prepare the initial system message to maintain context
     system_prompt = {
         "role": "system",
         "content": """
-                You are an intelligent assistant that analyzes construction plans. Give a numarical answers for the user query, do the calculations and give the final resultant value but do not show the calculations you have done to generate the final result.
-                Do not guess or provide irrelevant information. Only include:       
-                - Values with context that match the query (e.g., square footage or dimensions).        
-                - Brief and accurate summaries directly tied to the document's content.         
-                If specific data is not available, state that it is unavailable in the document.
-            """
+            You are a highly accurate and detail-oriented assistant specializing in construction plan analysis. Provide answers strictly based on the provided data, focusing only on numerical and context-relevant values.
+
+            - For queries involving measurements (e.g., square footage, dimensions, or quantities), calculate and consolidate all relevant data across sections of the document into a single, accurate result.
+            - Ensure the answers are clear, formatted, and concise, with only essential details.
+            - If specific data is unavailable, explicitly state that it is not provided in the document.
+
+            For each query:
+            - Combine any segmented information and provide a single, consolidated value.
+            - Avoid showing intermediary calculations unless explicitly requested by the user.
+            - Provide summaries only when requested and ensure they are directly relevant to the construction plan.
+        """
+
         }
 
     # Prepare the conversation history
@@ -105,9 +111,11 @@ def chunk_api_requests(encoded_images, user_query, api_key):
         chunk = encoded_images[i:i + chunk_size]
         
         payload = {
+            # "model": "gpt-4o",
             "model": "gpt-4-turbo",
             "messages": messages,  # Include full conversation history
-            "max_tokens": 3000
+            "max_tokens": 3000,
+
         }
 
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
