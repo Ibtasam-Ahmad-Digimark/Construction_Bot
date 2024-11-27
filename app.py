@@ -8,6 +8,12 @@ import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
 import tempfile  # Import tempfile for temporary directories
+# JSON response to create query answers
+import re
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
+
+import json
 
 
 api_key=st.secrets["OPENAI_API_KEY"]
@@ -15,32 +21,34 @@ api_key=st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
+txt_file_path = 'responses_updated.txt'
+
+if not os.path.exists(txt_file_path):
+            # If file does not exist, create it
+            with open(txt_file_path, 'w') as file:
+                print(f"File '{txt_file_path}' has been created.")
+# Load environment variables from .env file
+else:
+    print("already exist")
+
+
+
 first_query = """
-Please review the provided construction plan document and prepare a comprehensive report that captures the square footage for the following materials and components, only give numarical values. Give the values that accuratly matches the provided context.:
+Please analyze the provided construction plan document and return accurate numerical square footage values for the following materials and components:
 
-1. Sheetrock (Sheet rock : Length x Width)
-2. Concrete (Concrete : Length x Width = A, Depth of Concrete)
-3. Roofing (Roofing : Length x Width = A(Pitch Factor) = B)
-
-For roofing, kindly break down the details for each subtype:
+1. **Sheetrock:**
+2. **Concrete:**
+3. **Roofing:** Break down by subtype:
    - Shingle roofing
    - Modified bitumen
    - TPO (Thermoplastic Polyolefin)
-   - Metal R panel
+   - Metal R-panel
    - Standing seam
+4. **Structural Steel:** 
 
-4. Structural steel (Structural Steel : Length x Width = C, Average Height)
-
-The construction plan may consist of multiple sections or phases. Please make sure the square footage calculations are thorough and include all relevant areas of the document. If there are multiple entries for any material, please combine them to present a total square footage.
-
-Along with the square footage, it would be helpful to include a brief, thoughtful summary of the overall construction plan, highlighting key aspects such as:
-   - Materials used
-   - Phases of construction outlined
-   - Any noteworthy specifications or design elements
-
-
-Ensure the report is detailed, accurate, and provides a complete overview of the square footage calculations and essential aspects of the construction plan.
+Also give all the possible details you can extract from the data.
 """
+
 
 # Function to convert PDF to images
 def pdf_to_images(uploaded_file, output_dir):
@@ -63,15 +71,6 @@ def encode_images(image_directory):
                 encoded_images.append(encoded_image)
     return encoded_images
 
-# Function to save encoded images to JSON
-def save_to_json(encoded_images, json_path):
-    with open(json_path, 'w') as json_file:
-        json.dump(encoded_images, json_file)
-
-# Function to load encoded images from JSON
-def load_from_json(json_path):
-    with open(json_path, 'r') as json_file:
-        return json.load(json_file)
 
 # Function to make chunked API requests and stream combined responses
 def chunk_api_requests(encoded_images, user_query, api_key):
@@ -80,25 +79,17 @@ def chunk_api_requests(encoded_images, user_query, api_key):
         "Authorization": f"Bearer {api_key}"
     }
 
-    chunk_size = 5
     all_responses = []
 
     # Prepare the initial system message to maintain context
     system_prompt = {
         "role": "system",
         "content": """
-            You are a highly accurate and detail-oriented assistant specializing in construction plan analysis. Provide answers strictly based on the provided data, focusing only on numerical and context-relevant values.
-
-            - For queries involving measurements (e.g., square footage, dimensions, or quantities), calculate and consolidate all relevant data across sections of the document into a single, accurate result.
-            - Ensure the answers are clear, formatted, and concise, with only essential details.
-            - If specific data is unavailable, explicitly state that it is not provided in the document.
-
-            For each query:
-            - Combine any segmented information and provide a single, consolidated value.
-            - Avoid showing intermediary calculations unless explicitly requested by the user.
-            - Provide summaries only when requested and ensure they are directly relevant to the construction plan.
-        """
-
+                You are an intelligent assistant that analyzes construction plans. Give a numarical answers for the user query, do not guess or provide irrelevant information. Only include:       
+                - Values with context that match the query (e.g., square footage or dimensions).        
+                - Brief and accurate summaries directly tied to the document's content.         
+                If specific data is not available, state that it is unavailable in the document.
+            """
         }
 
     # Prepare the conversation history
@@ -106,33 +97,118 @@ def chunk_api_requests(encoded_images, user_query, api_key):
     messages.extend(st.session_state.responses)  # Add previous chats
     messages.append({"role": "user", "content": user_query})  # Add current user query
 
-    for i in range(0, len(encoded_images), chunk_size):
-        time.sleep(1)  # Simulating a delay
-        chunk = encoded_images[i:i + chunk_size]
-        
-        payload = {
-            # "model": "gpt-4o",
-            "model": "gpt-4-turbo",
-            "messages": messages,  # Include full conversation history
-            "max_tokens": 3000,
 
-        }
-
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-        
+    all_responses = []
+    for i in range(0, len(encoded_images)):
+        time.sleep(10)
         try:
-            response_content = response.json()['choices'][0]['message']['content']
-            all_responses.append(response_content)
-        except Exception as e:
-            all_responses.append(f"Error: {str(e)}")
+            response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[
+                {
+                "role": "user",
+                "content": [
+                    {
+                    "type": "text",
+                    "text": user_query,
+                    },
+                    {
+                    "type": "image_url",
+                    "image_url": {
+                        "url":  f"data:image/jpeg;base64,{encoded_images[i]}"
+                    },
+                    },
+                ],
+                }
+            ],
+            )
 
-    # Combine all responses into a single message
-    combined_responses = "\n\n".join(all_responses)
+            answer = response.choices[0].message.content
+            all_responses.append(answer)
+        except:
+            print('Error, Moving to Next')
+
+
+    try:
+        with open(txt_file_path, 'w') as file:
+            # Iterate over the all_responses list and write each response as a new line in the txt file
+            for response in all_responses:
+                file.write(response + "\n")  # Write each response followed by a newline
+    except Exception as e:
+        print(f"An error occurred while writing to the file: {e}")
+        
+
 
     # Stream the combined response
+    streamed_content = response_from_gpt(user_query,all_responses)
+
+    return streamed_content
+
+
+
+
+# Function to read the text file and extract the content
+def read_txt_file(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            text = file.read()
+    except UnicodeDecodeError:
+        # If utf-8 fails, try opening with 'latin-1' encoding
+        with open(file_path, 'r', encoding='latin-1') as file:
+            text = file.read()
+    return text
+
+# Function to split the text based on "The response for"
+def split_text(text):
+    # This regular expression will match the pattern "The response for"
+    split_pattern = r"The response for (\d+th image is)"
+    # Split the text into sections based on the pattern
+    sections = re.split(split_pattern, text)
+    return [section.strip() for section in sections if section.strip()]
+
+# Function to get top 5 most similar results using FuzzyWuzzy
+def get_top_similar_results(input_query, sections):
+    # Use FuzzyWuzzy to find the top 10 matches
+    results = process.extract(input_query, sections, limit=10, scorer=fuzz.ratio)
+    top_results = [result[0] for result in results]
+    return top_results
+
+# Main function to process the query and text file and get response
+def get_similarity_response(file_path, input_query):
+    # Step 1: Read the content of the text file
+    text = read_txt_file(file_path)
+    
+    # Step 2: Split the text into sections
+    sections = split_text(text)
+    
+    # Step 3: Get the top 5 most similar results using FuzzyWuzzy
+    top_results = get_top_similar_results(input_query, sections)
+
+    
+    
+    return top_results
+
+def response_from_gpt(user_query, all_responses):
+    
     stream = client.chat.completions.create(
         model="gpt-4o",
-        messages=[{"role": "user", "content": f"""Combine all the responses and explain it as one response, and don't give a hint that you have combined multiple responses in one {combined_responses}. If there are calculcations given in the respones make sure to add all of those calculations to give one final results for that."""}],
+        messages=[{"role": "user", "content": f'''Given the following user query and multiple responses, identify and combine the most relevant portions of the responses to provide a comprehensive and informative answer:
+
+        **User Query:**
+        {user_query}
+
+        **Multiple Responses:**
+        {all_responses}
+
+        **Guidelines:**
+        * Prioritize accuracy and relevance to the user's query.
+        * Combine information from multiple responses if necessary.
+        * Avoid redundancy and repetition.
+        * Present the information in a clear and concise manner.
+
+        **Output:**
+        A single, coherent response that addresses the user's query effectively.
+        '''}],
         stream=True,
     )
 
@@ -142,6 +218,13 @@ def chunk_api_requests(encoded_images, user_query, api_key):
             streamed_content += chunk.choices[0].delta.content
 
     return streamed_content
+
+
+
+
+
+
+
 
 # Streamlit UI
 st.title("PDF Chatbot")
@@ -169,10 +252,7 @@ if uploaded_file and api_key:
                 # Convert uploaded PDF to images and encode only once
                 pdf_to_images(uploaded_file, RESULTS_PATH)
                 st.session_state.encoded_images = encode_images(RESULTS_PATH)
-                
-                # Optional: Save to JSON, if needed
-                json_file_path = 'encoded_images.json'
-                save_to_json(st.session_state.encoded_images, json_file_path)
+            
 
     for message in st.session_state.responses:
         with st.chat_message(message['role']):
@@ -199,7 +279,19 @@ if uploaded_file and api_key:
         st.session_state.responses.append({"role": "user", "content": user_query})
         with st.spinner("Analyzing data..."):
             # Process user input and provide response
-            response = chunk_api_requests(st.session_state.encoded_images, user_query, api_key)
+            if st.button("Deep Analysis"):
+                with st.spinner("Deeply Analyzing Data..."):
+                    response = chunk_api_requests(st.session_state.encoded_images, first_query, api_key)
+                with st.chat_message('assistant'):
+                    st.markdown(response)
+                st.session_state.responses.append({"role": "assistant", "content": response})
+
+
+            else:
+                file_path = txt_file_path  # Specify the path to your text file
+                top_response = get_similarity_response(file_path, user_query)
+                response = response_from_gpt(user_query,top_response)
+
 
         with st.chat_message('user'):
             st.markdown(user_query)
