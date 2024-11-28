@@ -174,7 +174,7 @@ def response_from_gpt(user_query, all_responses):
     
     stream = client.chat.completions.create(
         model="gpt-4o",
-        messages=[{"role": "user", "content": f'''Given the following user query and multiple responses, identify and combine the most relevant portions of the responses to provide a comprehensive and informative answer:
+        messages=[{"role": "user","max_tokens": 30000, "content": f'''Given the following user query and multiple responses, identify and combine the most relevant portions of the responses to provide a comprehensive and informative answer:
 
         **User Query:**
         {user_query}
@@ -191,14 +191,14 @@ def response_from_gpt(user_query, all_responses):
         **Output:**
         A single, coherent response that addresses the user's query effectively.
         '''}],
-        # stream=True,
+        stream=True,
     )
 
-    streamed_content = stream.choices[0].message
-    # streamed_content = ""
-    # for chunk in stream:
-    #     if chunk.choices[0].delta.content is not None:
-    #         streamed_content += chunk.choices[0].delta.content
+    # streamed_content = stream.choices[0].message
+    streamed_content = ""
+    for chunk in stream:
+        if chunk.choices[0].delta.content is not None:
+            streamed_content += chunk.choices[0].delta.content
 
     return streamed_content
 
