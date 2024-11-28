@@ -5,15 +5,15 @@ import json
 import requests
 import time
 import streamlit as st
+import tempfile  
+import re
+import json
+
+
 from dotenv import load_dotenv
 from openai import OpenAI
-import tempfile  # Import tempfile for temporary directories
-# JSON response to create query answers
-import re
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
-
-import json
 
 
 api_key=st.secrets["OPENAI_API_KEY"]
@@ -21,30 +21,19 @@ api_key=st.secrets["OPENAI_API_KEY"]
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
-txt_file_path = 'responses_updated.txt'
-
-if not os.path.exists(txt_file_path):
-            # If file does not exist, create it
-            with open(txt_file_path, 'w') as file:
-                print(f"File '{txt_file_path}' has been created.")
-# Load environment variables from .env file
-else:
-    print("already exist")
-
-
 
 first_query = """
-Please analyze the provided construction plan document and return accurate numerical square footage values for the following materials and components:
+Please analyze the provided construction plan document and return every numerical square footage values for the following materials and components:
 
-1. **Sheetrock:**
-2. **Concrete:**
-3. **Roofing:** Break down by subtype:
+1. **Sheetrock:** (e.g., square footage or dimensions)
+2. **Concrete:** (e.g., square footage or dimensions)
+3. **Roofing:** Break down by subtype: (e.g., square footage or dimensions)
    - Shingle roofing
    - Modified bitumen
    - TPO (Thermoplastic Polyolefin)
    - Metal R-panel
    - Standing seam
-4. **Structural Steel:** 
+4. **Structural Steel:** (e.g., square footage or dimensions)
 
 Also give all the possible details you can extract from the data.
 """
@@ -71,7 +60,6 @@ def encode_images(image_directory):
                 encoded_images.append(encoded_image)
     return encoded_images
 
-
 # Function to make chunked API requests and stream combined responses
 def chunk_api_requests(encoded_images, user_query, api_key):
     headers = {
@@ -85,8 +73,8 @@ def chunk_api_requests(encoded_images, user_query, api_key):
     system_prompt = {
         "role": "system",
         "content": """
-                You are an intelligent assistant that analyzes construction plans. Give a numarical answers for the user query, do not guess or provide irrelevant information. Only include:       
-                - Values with context that match the query (e.g., square footage or dimensions).        
+                You are an intelligent construction assistant that analyzes construction plans. Give numarical answers for the user query, do not guess or provide irrelevant information. Only include:       
+                - Values with context that matches the user query (e.g., square footage or dimensions).        
                 - Brief and accurate summaries directly tied to the document's content.         
                 If specific data is not available, state that it is unavailable in the document.
             """
@@ -128,24 +116,12 @@ def chunk_api_requests(encoded_images, user_query, api_key):
         except:
             print('Error, Moving to Next')
 
-
-    try:
-        with open(txt_file_path, 'w') as file:
-            # Iterate over the all_responses list and write each response as a new line in the txt file
-            for response in all_responses:
-                file.write(response + "\n")  # Write each response followed by a newline
-    except Exception as e:
-        print(f"An error occurred while writing to the file: {e}")
-        
-
+        st.session_state.all_query_responses.append(all_responses)
 
     # Stream the combined response
     streamed_content = response_from_gpt(user_query,all_responses)
 
     return streamed_content
-
-
-
 
 # Function to read the text file and extract the content
 def read_txt_file(file_path):
@@ -161,33 +137,32 @@ def read_txt_file(file_path):
 # Function to split the text based on "The response for"
 def split_text(text):
     # This regular expression will match the pattern "The response for"
+    string_text = str(text)
     split_pattern = r"The response for (\d+th image is)"
     # Split the text into sections based on the pattern
-    sections = re.split(split_pattern, text)
+    sections = re.split(split_pattern, string_text)
     return [section.strip() for section in sections if section.strip()]
 
 # Function to get top 5 most similar results using FuzzyWuzzy
 def get_top_similar_results(input_query, sections):
-    # Use FuzzyWuzzy to find the top 10 matches
-    results = process.extract(input_query, sections, limit=10, scorer=fuzz.ratio)
+    # Use FuzzyWuzzy to find the top 7 matches
+    results = process.extract(input_query, sections, limit=7, scorer=fuzz.ratio)
     top_results = [result[0] for result in results]
     return top_results
 
 # Main function to process the query and text file and get response
-def get_similarity_response(file_path, input_query):
+def get_similarity_response( input_query):
     # Step 1: Read the content of the text file
-    text = read_txt_file(file_path)
+    text = st.session_state.all_query_responses
     
     # Step 2: Split the text into sections
     sections = split_text(text)
     
     # Step 3: Get the top 5 most similar results using FuzzyWuzzy
     top_results = get_top_similar_results(input_query, sections)
-
-    
-    
     return top_results
 
+# Function for the response from the gpt by all responses
 def response_from_gpt(user_query, all_responses):
     
     stream = client.chat.completions.create(
@@ -221,11 +196,6 @@ def response_from_gpt(user_query, all_responses):
 
 
 
-
-
-
-
-
 # Streamlit UI
 st.title("PDF Chatbot")
 
@@ -240,6 +210,9 @@ if 'current_query' not in st.session_state:
     st.session_state.current_query = ""
 if 'is_first_query' not in st.session_state:
     st.session_state.is_first_query = True  # Track if it's the first query
+if 'all_query_responses' not in st.session_state:
+    st.session_state.all_query_responses = []
+
 
 # Chat interaction
 if uploaded_file and api_key:
@@ -252,7 +225,6 @@ if uploaded_file and api_key:
                 # Convert uploaded PDF to images and encode only once
                 pdf_to_images(uploaded_file, RESULTS_PATH)
                 st.session_state.encoded_images = encode_images(RESULTS_PATH)
-            
 
     for message in st.session_state.responses:
         with st.chat_message(message['role']):
@@ -263,7 +235,7 @@ if uploaded_file and api_key:
         user_query = first_query
         st.session_state.current_query = user_query
 
-        with st.spinner("Analyzing data..."):
+        with st.spinner("Analyzing Complete Data..."):
             # Get the combined streamed response
             _f_response = chunk_api_requests(st.session_state.encoded_images, user_query, api_key)
 
@@ -275,29 +247,49 @@ if uploaded_file and api_key:
         st.session_state.current_query = ""  # Clear current query after first completion
 
     # Display chat_input after first query
-    if user_query:=st.chat_input("Enter your query:"):
+    col1, col2 = st.columns([3, 1])  # Adjust the column widths as needed
+
+    # Display the chat input in the first column
+    with col1:
+        user_query = st.chat_input("Enter your query:")
+
+    # Display the radio button in the second column
+    with col2:
+        deep_analysis_option = st.toggle("Deep Analysis", value=False)
+        # deep_analysis_option = st.radio("Choose an option:", ["On", "Off"], index=1)
+    if user_query:
+
+        # Save user query to session state for reference
         st.session_state.responses.append({"role": "user", "content": user_query})
-        with st.spinner("Analyzing data..."):
-            # Process user input and provide response
-            if st.button("Deep Analysis"):
-                with st.spinner("Deeply Analyzing Data..."):
-                    response = chunk_api_requests(st.session_state.encoded_images, first_query, api_key)
+
+        if deep_analysis_option:
+            with st.spinner("Deeply Analyzing Data..."):
+                response = chunk_api_requests(st.session_state.encoded_images, user_query, api_key)
+
+            # Display the deep analysis response
+            with st.chat_message('assistant'):
+                st.markdown(response)
+            
+            # Append the new deep analysis response to session state
+            st.session_state.responses.append({"role": "assistant", "content": response})
+
+        else:
+        # Initial response generation
+            with st.spinner("Analyzing data..."):
+                # Generate similarity response based on the user's query
+                top_response = get_similarity_response(user_query)
+                response = response_from_gpt(user_query, top_response)
+            
+            # Display the user's query and the initial assistant response
+                with st.chat_message('user'):
+                    st.markdown(user_query)
+
                 with st.chat_message('assistant'):
                     st.markdown(response)
+                
+                # Store the assistant response in session state for future use
                 st.session_state.responses.append({"role": "assistant", "content": response})
 
-
-            else:
-                file_path = txt_file_path  # Specify the path to your text file
-                top_response = get_similarity_response(file_path, user_query)
-                response = response_from_gpt(user_query,top_response)
-
-
-        with st.chat_message('user'):
-            st.markdown(user_query)
-
-        with st.chat_message('assistant'):
-            st.markdown(response)
-        st.session_state.responses.append({"role": "assistant", "content": response})
 else:
-    st.warning("Please upload a PDF. Uploading PDF might take some time; don't close the application.")
+    # If no user query is provided, show a warning about the PDF upload
+    st.warning("Please upload a PDF. Uploading PDF an deep Anaysis might take some time; don't close the application.")
