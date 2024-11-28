@@ -22,6 +22,8 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 
+
+
 first_query = """
 Please analyze the provided construction plan document and return every numerical square footage values for the following materials and components:
 
@@ -35,8 +37,9 @@ Please analyze the provided construction plan document and return every numerica
    - Standing seam
 4. **Structural Steel:** (e.g., square footage or dimensions)
 
-Also give all the possible details you can extract from the data.
+Also give all the possible details you can extract from the data. Make sure the word count should be less than 700
 """
+
 
 
 # Function to convert PDF to images
@@ -87,6 +90,8 @@ def chunk_api_requests(encoded_images, user_query, api_key):
 
 
     all_responses = []
+    progress_bar = st.progress(0)
+
     for i in range(0, len(encoded_images)):
         time.sleep(10)
         try:
@@ -113,6 +118,8 @@ def chunk_api_requests(encoded_images, user_query, api_key):
 
             answer = response.choices[0].message.content
             all_responses.append(answer)
+            progress = (i + 1) / len(encoded_images)  # Calculate progress as a fraction
+            progress_bar.progress(progress, text='Analyzing Complete data, please wait ...')
         except:
             print('Error, Moving to Next')
 
@@ -145,8 +152,8 @@ def split_text(text):
 
 # Function to get top 5 most similar results using FuzzyWuzzy
 def get_top_similar_results(input_query, sections):
-    # Use FuzzyWuzzy to find the top 7 matches
-    results = process.extract(input_query, sections, limit=7, scorer=fuzz.ratio)
+    # Use FuzzyWuzzy to find the top 5 matches
+    results = process.extract(input_query, sections, limit=5, scorer=fuzz.ratio)
     top_results = [result[0] for result in results]
     return top_results
 
@@ -184,13 +191,14 @@ def response_from_gpt(user_query, all_responses):
         **Output:**
         A single, coherent response that addresses the user's query effectively.
         '''}],
-        stream=True,
+        # stream=True,
     )
 
-    streamed_content = ""
-    for chunk in stream:
-        if chunk.choices[0].delta.content is not None:
-            streamed_content += chunk.choices[0].delta.content
+    streamed_content = stream.choices[0].message
+    # streamed_content = ""
+    # for chunk in stream:
+    #     if chunk.choices[0].delta.content is not None:
+    #         streamed_content += chunk.choices[0].delta.content
 
     return streamed_content
 
@@ -263,6 +271,7 @@ if uploaded_file and api_key:
         st.session_state.responses.append({"role": "user", "content": user_query})
 
         if deep_analysis_option:
+            print('aple')
             with st.spinner("Deeply Analyzing Data..."):
                 response = chunk_api_requests(st.session_state.encoded_images, user_query, api_key)
 
