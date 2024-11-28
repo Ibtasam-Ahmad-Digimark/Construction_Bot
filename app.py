@@ -37,7 +37,7 @@ Please analyze the provided construction plan document and return every numerica
    - Standing seam
 4. **Structural Steel:** (e.g., square footage or dimensions)
 
-Also give all the possible details you can extract from the data. Make sure the word count should be less than 700
+Also give all the possible details you can extract from the data. Make sure the word count should be less than 500
 """
 
 
@@ -153,7 +153,7 @@ def split_text(text):
 # Function to get top 5 most similar results using FuzzyWuzzy
 def get_top_similar_results(input_query, sections):
     # Use FuzzyWuzzy to find the top 5 matches
-    results = process.extract(input_query, sections, limit=5, scorer=fuzz.ratio)
+    results = process.extract(input_query, sections, limit=3, scorer=fuzz.ratio)
     top_results = [result[0] for result in results]
     return top_results
 
@@ -174,7 +174,7 @@ def response_from_gpt(user_query, all_responses):
     
     stream = client.chat.completions.create(
         model="gpt-4o",
-        messages=[{"role": "user","max_tokens": 30000, "content": f'''Given the following user query and multiple responses, identify and combine the most relevant portions of the responses to provide a comprehensive and informative answer:
+        messages=[{"role": "user","max_tokens": 50000, "content": f'''Given the following user query and multiple responses, identify and combine the most relevant portions of the responses to provide a comprehensive and informative answer:
 
         **User Query:**
         {user_query}
