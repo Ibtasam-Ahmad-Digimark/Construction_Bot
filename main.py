@@ -56,9 +56,10 @@ def chunk_api_requests(encoded_images, user_query, api_key):
     system_prompt = {
         "role": "system",
         "content": """
-                You are an intelligent construction assistant that analyzes construction plans. Do not guess or provide irrelevant information.
+                You are an intelligent construction assistant that analyzes construction plans. Give numarical answers for the user query, do not guess or provide irrelevant information.
                 Include:       
                 - Values with context that matches the user query.        
+                - Detail and accurate descriptions directly tied to the document's content.         
                 If specific data is not available, state that it is unavailable in the document.
             """
         }

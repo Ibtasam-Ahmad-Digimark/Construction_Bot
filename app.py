@@ -40,12 +40,12 @@ Please analyze the provided construction plan and return every numerical square 
 If you don't find any of these, don't write anything about it .Don't say 'No specific numerical values or references have been listed for **Sheetrock**, **Structural Steel**, or distinct types of **Roofing** materials like Shingle Roofing, Modified Bitumen, TPO, Metal R-panel, and Standing Seam in the visible parts of the construction plan' or any thing about this.
 
 
-Extract all the data from the provided image, ensuring that each type of information is formatted in separate paragraphs. For each category, summarize the relevant information in a single paragraph. Ensure all numerical values, quantities, and other detailed information are included, such as measurements, dates, labels, or any other figures present. The paragraphs should be as detailed as possible, reflecting the contents of the image with clarity..
+Extract all the possible details you can extract from the data, ensuring that each type of information is formatted in separate paragraphs. For each category, summarize the relevant information in a single paragraph. Ensure all numerical values, quantities, and other detailed information are included, such as measurements, dates, labels, or any other figures present, with each paragraph corresponding to a different type of detail from the data. The paragraphs should be as detailed as possible, reflecting the contents of the image with clarity. 
 """
 
 
 first_query = """
-Please analyze the data and return every numerical square footage values for the following materials and components:
+Please analyze the provided construction plan document and return every numerical square footage values for the following materials and components:
 
 1. **Sheetrock:** (e.g., square footage or dimensions)
 2. **Concrete:** (e.g., square footage or dimensions)
@@ -57,7 +57,7 @@ Please analyze the data and return every numerical square footage values for the
    - Standing seam
 4. **Structural Steel:** (e.g., square footage or dimensions)
 
-Also give all the possible details you can extract from the data eg:total area, .
+Also give all the possible details you can extract from the data.
 """
 
 
