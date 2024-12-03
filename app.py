@@ -25,7 +25,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 intitial_prompt = """
-Please analyze the provided construction plan and return every numerical square footage values for the following materials and components:
+Please analyze the provided construction plan and return locations in the data, every single detail in the data, every numerical value and its detail, every numerical square footage values for the following materials and components:
 
 1. **Sheetrock:** 
 2. **Concrete:** 
@@ -37,10 +37,11 @@ Please analyze the provided construction plan and return every numerical square 
    - Standing seam
 4. **Structural Steel:** 
 
-If you don't find any of these, don't write anything about it .Don't say 'No specific numerical values or references have been listed for **Sheetrock**, **Structural Steel**, or distinct types of **Roofing** materials like Shingle Roofing, Modified Bitumen, TPO, Metal R-panel, and Standing Seam in the visible parts of the construction plan' or any thing about this.
+Extract all the informations that you can extract form the data. 
 
+If you don't find any of these (Sheetrock, Concrete, Roofing subtypes, or Structural Steel) don't write anything about it, just ignore it like i never asked. Don't say anything like 'No square footage or detailed breakdown for the specific ...'.
 
-Extract all the possible details you can extract from the data, ensuring that each type of information is formatted in separate paragraphs. For each category, summarize the relevant information in a single paragraph. Ensure all numerical values, quantities, and other detailed information are included, such as measurements, dates, labels, or any other figures present, with each paragraph corresponding to a different type of detail from the data. The paragraphs should be as detailed as possible, reflecting the contents of the image with clarity. 
+Extract all the data from the provided image, ensuring that each type of information is formatted in separate paragraphs. For each category, summarize the relevant information in a single paragraph. Ensure all numerical values, quantities, and other detailed information are included, such as measurements, dates, labels, or any other figures present. Return the extracted data in four separate paragraphs, with each paragraph corresponding to a different type of data from the image. The paragraphs should be as specific as possible, reflecting the contents of the image with clarity..
 """
 
 
