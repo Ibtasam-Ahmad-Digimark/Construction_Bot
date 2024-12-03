@@ -19,7 +19,7 @@ from fuzzywuzzy import process
 
 api_key=st.secrets["OPENAI_API_KEY"]
 # Initialize OpenAI client
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+client = OpenAI(api_key=api_key)
 
 
 # Function to convert PDF to images
